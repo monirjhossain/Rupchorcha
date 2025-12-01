@@ -255,31 +255,31 @@ return [
          */
         Webkul\Theme\Providers\ThemeServiceProvider::class,
         Webkul\User\Providers\UserServiceProvider::class,
-        Webkul\Admin\Providers\AdminServiceProvider::class,
+        // Webkul\Admin\Providers\AdminServiceProvider::class, // Disabled - using custom admin
         Webkul\Ui\Providers\UiServiceProvider::class,
         Webkul\Category\Providers\CategoryServiceProvider::class,
         Webkul\Attribute\Providers\AttributeServiceProvider::class,
         Webkul\Core\Providers\CoreServiceProvider::class,
         Webkul\Core\Providers\EnvValidatorServiceProvider::class,
-        Webkul\Shop\Providers\ShopServiceProvider::class,
+        // Webkul\Shop\Providers\ShopServiceProvider::class, // Disabled - using custom frontend
         Webkul\Customer\Providers\CustomerServiceProvider::class,
         Webkul\Inventory\Providers\InventoryServiceProvider::class,
         Webkul\Product\Providers\ProductServiceProvider::class,
-        Webkul\Checkout\Providers\CheckoutServiceProvider::class,
+        // Webkul\Checkout\Providers\CheckoutServiceProvider::class, // Disabled - using custom checkout
         Webkul\Shipping\Providers\ShippingServiceProvider::class,
         Webkul\Payment\Providers\PaymentServiceProvider::class,
         Webkul\Paypal\Providers\PaypalServiceProvider::class,
-        Webkul\Sales\Providers\SalesServiceProvider::class,
+        // Webkul\Sales\Providers\SalesServiceProvider::class, // Disabled - using custom order system
         Webkul\Tax\Providers\TaxServiceProvider::class,
         Webkul\CatalogRule\Providers\CatalogRuleServiceProvider::class,
         Webkul\CartRule\Providers\CartRuleServiceProvider::class,
         Webkul\Rule\Providers\RuleServiceProvider::class,
         Webkul\CMS\Providers\CMSServiceProvider::class,
         Webkul\Velocity\Providers\VelocityServiceProvider::class,
-        Webkul\BookingProduct\Providers\BookingProductServiceProvider::class,
-        Webkul\SocialLogin\Providers\SocialLoginServiceProvider::class,
-        Webkul\DebugBar\Providers\DebugBarServiceProvider::class,
-        Webkul\Marketing\Providers\MarketingServiceProvider::class,
+        // Webkul\BookingProduct\Providers\BookingProductServiceProvider::class, // Disabled - not needed
+        // Webkul\SocialLogin\Providers\SocialLoginServiceProvider::class, // Disabled - not needed
+        // Webkul\DebugBar\Providers\DebugBarServiceProvider::class, // Disabled - causes query issues
+        // Webkul\Marketing\Providers\MarketingServiceProvider::class, // Disabled - not needed
         Webkul\Notification\Providers\NotificationServiceProvider::class
     ],
 

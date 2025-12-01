@@ -3,60 +3,75 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Webkul\Core\Repositories\SliderRepository;
+use App\Models\Slider;
+use Illuminate\Http\Request;
 
 class SliderController extends Controller
 {
-    protected $sliderRepository;
-
-    public function __construct(SliderRepository $sliderRepository)
-    {
-        $this->sliderRepository = $sliderRepository;
-    }
-
-    public function index()
+    /**
+     * Get all active sliders
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function index(Request $request)
     {
         try {
-            $channelId = core()->getCurrentChannel()->id;
+            $query = Slider::active()
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('created_at', 'desc');
             
-            // Directly query sliders instead of using repository method
-            $sliders = \Webkul\Core\Models\Slider::where('channel_id', $channelId)
-                ->orderBy('sort_order')
-                ->get();
+            // Filter by locale
+            if ($request->has('locale') && $request->locale) {
+                $query->where('locale', $request->locale);
+            } else {
+                $query->where('locale', 'en'); // Default to English
+            }
             
+            $sliders = $query->get();
+            
+            // Transform data for frontend
             $data = $sliders->map(function($slider) {
                 $imagePath = null;
                 
-                // Check for path field
                 if (!empty($slider->path)) {
-                    $imagePath = url('storage/' . $slider->path);
-                } elseif (!empty($slider->image_url)) {
-                    $imagePath = $slider->image_url;
+                    // Check if it's external URL
+                    if (str_starts_with($slider->path, 'http')) {
+                        $imagePath = $slider->path;
+                    } else {
+                        $imagePath = asset('storage/' . $slider->path);
+                    }
                 } else {
-                    $imagePath = 'https://via.placeholder.com/1400x400/e8e8e8/666?text=Upload+Slider+Image';
+                    $imagePath = 'https://via.placeholder.com/1920x600/e8e8e8/666?text=Slider+Image';
                 }
                 
                 return [
                     'id' => $slider->id,
-                    'title' => $slider->title ?? 'BUY',
+                    'title' => $slider->title ?? 'Special Offer',
+                    'content' => $slider->content ?? '',
+                    'image' => $imagePath,
+                    'link' => $slider->slider_path ?? '#',
+                    'sort_order' => $slider->sort_order,
+                    
+                    // Legacy format support for existing frontend
                     'leftProduct' => $slider->title ?? 'Premium Product',
                     'rightProduct' => 'Special Offer',
                     'offer' => 'GET FREE',
                     'freeProduct' => $slider->content ?? 'Limited Time Offer',
-                    'image' => $imagePath,
                 ];
             });
             
             return response()->json([
                 'success' => true,
-                'data' => $data
+                'data' => $data,
             ]);
+            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'data' => [],
-                'message' => $e->getMessage()
-            ]);
+                'message' => 'Failed to fetch sliders',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 }

@@ -182,6 +182,12 @@ return [
         'sort'       => 2,
         'icon-class' => '',
     ], [
+        'key'        => 'settings.shipping',
+        'name'       => 'Shipping',
+        'route'      => 'admin.shipping.index',
+        'sort'       => 9,
+        'icon-class' => '',
+    ], [
         'key'        => 'marketing',
         'name'       => 'admin::app.layouts.marketing',
         'route'      => 'admin.catalog-rules.index',

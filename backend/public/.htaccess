@@ -21,6 +21,14 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
+# CORS Headers
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    Header set Access-Control-Max-Age "86400"
+</IfModule>
+
 # Media Files Cache-Control
 <FilesMatch ".(jpg|jpeg|gif|png|svg|swf|webp)$">
     <IfModule mod_headers.c>

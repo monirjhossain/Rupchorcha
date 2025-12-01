@@ -3,42 +3,38 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
+use App\Models\Category;
 use Illuminate\Http\Request;
-use Webkul\Product\Repositories\ProductRepository;
 
 class ProductController extends Controller
 {
     /**
-     * ProductRepository object
-     *
-     * @var \Webkul\Product\Repositories\ProductRepository
-     */
-    protected $productRepository;
-
-    /**
-     * Create a new controller instance.
-     *
-     * @param  \Webkul\Product\Repositories\ProductRepository  $productRepository
-     * @return void
-     */
-    public function __construct(ProductRepository $productRepository)
-    {
-        $this->productRepository = $productRepository;
-    }
-
-    /**
-     * Get all products
+     * Get all products with filters
      *
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 15);
-        
         try {
-            $query = \Webkul\Product\Models\ProductFlat::query()
-                ->where('locale', core()->getCurrentLocale()->code)
-                ->where('channel', core()->getCurrentChannel()->code);
+            $query = Product::with(['categories', 'images'])
+                ->where('status', 1);
+            
+            // Search
+            if ($request->has('search') && $request->search) {
+                $query->where(function($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->search . '%')
+                      ->orWhere('description', 'like', '%' . $request->search . '%')
+                      ->orWhere('sku', 'like', '%' . $request->search . '%');
+                });
+            }
+            
+            // Category filter
+            if ($request->has('category_id') && $request->category_id) {
+                $query->whereHas('categories', function($q) use ($request) {
+                    $q->where('categories.id', $request->category_id);
+                });
+            }
             
             // Price filter
             if ($request->has('min_price')) {
@@ -49,12 +45,14 @@ class ProductController extends Controller
                 $query->where('price', '<=', $request->max_price);
             }
             
-            // Category filter
-            if ($request->has('categories') && !empty($request->categories)) {
-                $categoryIds = explode(',', $request->categories);
-                $query->whereHas('product.categories', function($q) use ($categoryIds) {
-                    $q->whereIn('categories.id', $categoryIds);
-                });
+            // Featured products
+            if ($request->has('featured') && $request->featured) {
+                $query->where('featured', 1);
+            }
+            
+            // New products
+            if ($request->has('new') && $request->new) {
+                $query->where('new', 1);
             }
             
             // Sorting
@@ -76,126 +74,187 @@ class ProductController extends Controller
                         $query->orderBy('created_at', 'desc');
                         break;
                     default:
-                        $query->orderBy('product_id', 'desc');
+                        $query->orderBy('created_at', 'desc');
                 }
             } else {
-                $query->orderBy('product_id', 'desc');
+                $query->orderBy('created_at', 'desc');
             }
             
-            $products = $query->with(['product.images'])->paginate($perPage);
+            $perPage = $request->get('per_page', 15);
+            $products = $query->paginate($perPage);
             
-            // Format products with images
-            $formattedProducts = collect($products->items())->map(function($flat) {
-                $data = [
-                    'id' => $flat->product_id,
-                    'name' => $flat->name,
-                    'price' => $flat->price,
-                    'special_price' => $flat->special_price,
-                    'description' => $flat->description,
-                    'short_description' => $flat->short_description,
-                    'url_key' => $flat->url_key,
-                    'images' => []
-                ];
-                
-                if ($flat->product && $flat->product->images) {
-                    $data['images'] = $flat->product->images->map(function($image) {
+            // Transform data for API
+            $products->getCollection()->transform(function($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'sku' => $product->sku,
+                    'description' => $product->description,
+                    'short_description' => $product->short_description,
+                    'price' => (float) $product->price,
+                    'special_price' => $product->special_price ? (float) $product->special_price : null,
+                    'display_price' => (float) $product->display_price,
+                    'quantity' => $product->quantity,
+                    'weight' => $product->weight ? (float) $product->weight : null,
+                    'status' => (bool) $product->status,
+                    'featured' => (bool) $product->featured,
+                    'new' => (bool) $product->new,
+                    'in_stock' => $product->isInStock(),
+                    'images' => $product->images->map(function($image) {
                         return [
                             'id' => $image->id,
                             'url' => asset('storage/' . $image->path),
-                            'path' => $image->path
+                            'path' => $image->path,
+                            'position' => $image->position,
                         ];
-                    });
-                }
-                
-                return $data;
+                    }),
+                    'categories' => $product->categories->map(function($category) {
+                        return [
+                            'id' => $category->id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                        ];
+                    }),
+                    'meta_title' => $product->meta_title,
+                    'meta_description' => $product->meta_description,
+                ];
             });
-
+            
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'data' => $formattedProducts,
-                    'current_page' => $products->currentPage(),
-                    'last_page' => $products->lastPage(),
-                    'per_page' => $products->perPage(),
-                    'total' => $products->total(),
-                ],
-                'message' => 'Products retrieved successfully'
+                'data' => $products,
             ]);
+            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Failed to fetch products',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Get single product by ID
+     * Search products
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function search(Request $request)
+    {
+        $request->validate([
+            'q' => 'required|string|min:2',
+        ]);
+        
+        try {
+            $query = Product::with(['categories', 'images'])
+                ->where('status', 1)
+                ->where(function($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->q . '%')
+                      ->orWhere('description', 'like', '%' . $request->q . '%')
+                      ->orWhere('short_description', 'like', '%' . $request->q . '%')
+                      ->orWhere('sku', 'like', '%' . $request->q . '%');
+                });
+            
+            $perPage = $request->get('per_page', 15);
+            $products = $query->paginate($perPage);
+            
+            // Transform data
+            $products->getCollection()->transform(function($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'sku' => $product->sku,
+                    'price' => (float) $product->price,
+                    'special_price' => $product->special_price ? (float) $product->special_price : null,
+                    'display_price' => (float) $product->display_price,
+                    'quantity' => $product->quantity,
+                    'in_stock' => $product->isInStock(),
+                    'images' => $product->images->map(function($image) {
+                        return [
+                            'id' => $image->id,
+                            'url' => asset('storage/' . $image->path),
+                            'path' => $image->path,
+                        ];
+                    }),
+                    'categories' => $product->categories->pluck('name'),
+                ];
+            });
+            
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Search failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get single product details
      *
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
     {
-        // Use ProductFlat for consistent data structure
-        $flat = \Webkul\Product\Models\ProductFlat::where('product_id', $id)
-            ->with(['product.images'])
-            ->first();
-
-        if (!$flat) {
+        try {
+            $product = Product::with(['categories', 'images'])
+                ->where('status', 1)
+                ->findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'sku' => $product->sku,
+                    'description' => $product->description,
+                    'short_description' => $product->short_description,
+                    'price' => (float) $product->price,
+                    'special_price' => $product->special_price ? (float) $product->special_price : null,
+                    'display_price' => (float) $product->display_price,
+                    'quantity' => $product->quantity,
+                    'weight' => $product->weight ? (float) $product->weight : null,
+                    'status' => (bool) $product->status,
+                    'featured' => (bool) $product->featured,
+                    'new' => (bool) $product->new,
+                    'in_stock' => $product->isInStock(),
+                    'images' => $product->images->map(function($image) {
+                        return [
+                            'id' => $image->id,
+                            'url' => asset('storage/' . $image->path),
+                            'path' => $image->path,
+                            'position' => $image->position,
+                        ];
+                    }),
+                    'categories' => $product->categories->map(function($category) {
+                        return [
+                            'id' => $category->id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'description' => $category->description,
+                        ];
+                    }),
+                    'meta_title' => $product->meta_title,
+                    'meta_description' => $product->meta_description,
+                    'meta_keywords' => $product->meta_keywords,
+                ],
+            ]);
+            
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Product not found'
+                'message' => 'Product not found',
+                'error' => $e->getMessage(),
             ], 404);
         }
-
-        // Format product data same as index method
-        $data = [
-            'id' => $flat->product_id,
-            'name' => $flat->name,
-            'price' => $flat->price,
-            'description' => $flat->description,
-            'short_description' => $flat->short_description,
-            'sku' => $flat->sku,
-            'url_key' => $flat->url_key,
-        ];
-
-        // Format images with full URL
-        if ($flat->product && $flat->product->images) {
-            $data['images'] = $flat->product->images->map(function($image) {
-                return [
-                    'id' => $image->id,
-                    'url' => asset('storage/' . $image->path),
-                    'path' => $image->path
-                ];
-            })->toArray();
-        } else {
-            $data['images'] = [];
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-            'message' => 'Product retrieved successfully'
-        ]);
-    }
-
-    /**
-     * Search products
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function search(Request $request)
-    {
-        $term = $request->get('q');
-        
-        $products = $this->productRepository->searchProducts($term);
-
-        return response()->json([
-            'success' => true,
-            'data' => $products,
-            'message' => 'Search results retrieved successfully'
-        ]);
     }
 }

@@ -15,6 +15,8 @@ use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\ShippingController as AdminShippingController;
+use App\Http\Controllers\Admin\SliderController as AdminSliderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +37,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
         Route::put('/{id}', [AdminProductController::class, 'update'])->name('update');
         Route::delete('/{id}', [AdminProductController::class, 'destroy'])->name('destroy');
         Route::post('/mass-destroy', [AdminProductController::class, 'massDestroy'])->name('mass-destroy');
+        Route::delete('/images/{id}', [AdminProductController::class, 'deleteImage'])->name('delete-image');
     });
     
     // Categories
@@ -45,6 +48,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
         Route::get('/{id}/edit', [AdminCategoryController::class, 'edit'])->name('edit');
         Route::put('/{id}', [AdminCategoryController::class, 'update'])->name('update');
         Route::delete('/{id}', [AdminCategoryController::class, 'destroy'])->name('destroy');
+        Route::post('/mass-destroy', [AdminCategoryController::class, 'massDestroy'])->name('mass-destroy');
+        Route::delete('/{id}/image', [AdminCategoryController::class, 'deleteImage'])->name('delete-image');
+        Route::post('/reorder', [AdminCategoryController::class, 'reorder'])->name('reorder');
     });
     
     // Orders
@@ -68,10 +74,31 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
         Route::post('/mass-destroy', [AdminCustomerController::class, 'massDestroy'])->name('mass-destroy');
     });
     
+    // Sliders
+    Route::prefix('sliders')->name('sliders.')->group(function () {
+        Route::get('/', [AdminSliderController::class, 'index'])->name('index');
+        Route::get('/create', [AdminSliderController::class, 'create'])->name('create');
+        Route::post('/', [AdminSliderController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [AdminSliderController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [AdminSliderController::class, 'update'])->name('update');
+        Route::delete('/{id}', [AdminSliderController::class, 'destroy'])->name('destroy');
+        Route::post('/mass-destroy', [AdminSliderController::class, 'massDestroy'])->name('mass-destroy');
+        Route::delete('/{id}/image', [AdminSliderController::class, 'deleteImage'])->name('delete-image');
+        Route::post('/reorder', [AdminSliderController::class, 'reorder'])->name('reorder');
+    });
+    
     // Settings
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/general', [AdminSettingsController::class, 'general'])->name('general');
         Route::post('/update', [AdminSettingsController::class, 'update'])->name('update');
+    });
+
+    // Shipping Settings
+    Route::prefix('shipping')->name('shipping.')->group(function () {
+        Route::get('/', [AdminShippingController::class, 'index'])->name('index');
+        Route::put('/methods/{id}', [AdminShippingController::class, 'update'])->name('update');
+        Route::post('/general', [AdminShippingController::class, 'updateGeneral'])->name('updateGeneral');
+        Route::post('/methods/{id}/toggle', [AdminShippingController::class, 'toggleStatus'])->name('toggleStatus');
     });
 });
 
@@ -81,8 +108,10 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
 |--------------------------------------------------------------------------
 */
 
-// Home
-Route::get('/', [HomeController::class, 'index'])->name('home');
+// Redirect root to admin login
+Route::get('/', function() {
+    return redirect()->route('admin.session.create');
+});
 
 // Products
 Route::prefix('products')->group(function () {
@@ -130,15 +159,31 @@ Route::prefix('customer')->middleware('auth:customer')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Bagisto Default Routes (Admin & Authentication)
+| Custom Admin Authentication (using Bagisto's auth only)
 |--------------------------------------------------------------------------
 */
 
-// Load Bagisto routes for admin panel and authentication
-Route::group(['middleware' => ['web']], function () {
-    // Bagisto route loader
-    $bagistoRoutes = base_path('packages/Webkul/Shop/src/Http/routes.php');
-    if (file_exists($bagistoRoutes)) {
-        require $bagistoRoutes;
-    }
+Route::group(['middleware' => ['web'], 'prefix' => 'admin'], function () {
+    // Admin Login
+    Route::get('login', function() {
+        if (auth()->guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return view('admin.auth.login');
+    })->name('admin.session.create');
+
+    Route::post('login', function(\Illuminate\Http\Request $request) {
+        $credentials = $request->only('email', 'password');
+        
+        if (auth()->guard('admin')->attempt($credentials)) {
+            return redirect()->route('admin.dashboard');
+        }
+        
+        return back()->withErrors(['email' => 'Invalid credentials']);
+    })->name('admin.session.store');
+
+    Route::post('logout', function() {
+        auth()->guard('admin')->logout();
+        return redirect()->route('admin.session.create');
+    })->name('admin.session.destroy');
 });
