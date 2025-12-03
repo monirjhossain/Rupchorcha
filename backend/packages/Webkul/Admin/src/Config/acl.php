@@ -141,6 +141,11 @@ return [
         'route' => 'admin.catalog.products.massdelete',
         'sort'  => 6,
     ], [
+        'key'   => 'catalog.bulk-import',
+        'name'  => 'Bulk Import',
+        'route' => 'admin.products.import.index',
+        'sort'  => 7,
+    ], [
         'key'   => 'catalog.categories',
         'name'  => 'admin::app.acl.categories',
         'route' => 'admin.catalog.categories.index',

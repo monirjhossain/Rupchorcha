@@ -56,22 +56,28 @@ return [
         'sort'       => 1,
         'icon-class' => '',
     ], [
+        'key'        => 'catalog.bulk-import',
+        'name'       => 'Bulk Import',
+        'route'      => 'admin.products.import.index',
+        'sort'       => 2,
+        'icon-class' => '',
+    ], [
         'key'        => 'catalog.categories',
         'name'       => 'admin::app.layouts.categories',
         'route'      => 'admin.catalog.categories.index',
-        'sort'       => 2,
+        'sort'       => 3,
         'icon-class' => '',
     ], [
         'key'        => 'catalog.attributes',
         'name'       => 'admin::app.layouts.attributes',
         'route'      => 'admin.catalog.attributes.index',
-        'sort'       => 3,
+        'sort'       => 4,
         'icon-class' => '',
     ], [
         'key'        => 'catalog.families',
         'name'       => 'admin::app.layouts.attribute-families',
         'route'      => 'admin.catalog.families.index',
-        'sort'       => 4,
+        'sort'       => 5,
         'icon-class' => '',
     ], [
         'key'        => 'customers',

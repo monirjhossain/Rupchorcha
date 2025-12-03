@@ -51,6 +51,20 @@ Route::prefix('tags')->group(function () {
     Route::get('/{id}/products', 'App\Http\Controllers\API\TagController@products');
 });
 
+// Attributes API
+Route::prefix('attributes')->group(function () {
+    Route::get('/', 'App\Http\Controllers\API\AttributeController@index');
+    Route::get('/{id}', 'App\Http\Controllers\API\AttributeController@show');
+    Route::get('/options/{optionId}/products', 'App\Http\Controllers\API\AttributeController@products');
+});
+
+// Bundles API (Frequently Bought Together)
+Route::prefix('bundles')->group(function () {
+    Route::get('/', 'App\Http\Controllers\API\BundleController@index');
+    Route::get('/{id}', 'App\Http\Controllers\API\BundleController@show');
+    Route::get('/product/{productId}', 'App\Http\Controllers\API\BundleController@getProductBundles');
+});
+
 // Cart API
 Route::prefix('cart')->group(function () {
     Route::get('/', 'App\Http\Controllers\API\CartController@index');

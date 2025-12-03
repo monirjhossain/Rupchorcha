@@ -29,10 +29,15 @@ class ProductController extends Controller
                 });
             }
             
-            // Category filter
+            // Category filter (single category_id or multiple categories)
             if ($request->has('category_id') && $request->category_id) {
                 $query->whereHas('categories', function($q) use ($request) {
                     $q->where('categories.id', $request->category_id);
+                });
+            } elseif ($request->has('categories') && $request->categories) {
+                $categoryIds = explode(',', $request->categories);
+                $query->whereHas('categories', function($q) use ($categoryIds) {
+                    $q->whereIn('categories.id', $categoryIds);
                 });
             }
             
@@ -43,6 +48,14 @@ class ProductController extends Controller
             
             if ($request->has('max_price')) {
                 $query->where('price', '<=', $request->max_price);
+            }
+            
+            // Brand filter
+            if ($request->has('brands') && $request->brands) {
+                $brandIds = explode(',', $request->brands);
+                $query->whereHas('brands', function($q) use ($brandIds) {
+                    $q->whereIn('brands.id', $brandIds);
+                });
             }
             
             // Featured products

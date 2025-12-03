@@ -16,6 +16,7 @@ class Product extends Model
         'description',
         'short_description',
         'price',
+        'cost_price',
         'special_price',
         'quantity',
         'weight',
@@ -29,6 +30,7 @@ class Product extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
         'special_price' => 'decimal:2',
         'quantity' => 'integer',
         'status' => 'boolean',
@@ -50,6 +52,56 @@ class Product extends Model
     public function images()
     {
         return $this->hasMany(ProductImage::class);
+    }
+
+    /**
+     * Get product brands
+     */
+    public function brands()
+    {
+        return $this->belongsToMany(Brand::class, 'brand_product');
+    }
+    
+    /**
+     * Get product tags
+     */
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'product_tag');
+    }
+    
+    /**
+     * Get product bundles (frequently bought together)
+     */
+    public function bundles()
+    {
+        return $this->hasMany(ProductBundle::class, 'product_id');
+    }
+    
+    /**
+     * Get bundled products
+     */
+    public function bundledProducts()
+    {
+        return $this->belongsToMany(Product::class, 'product_bundles', 'product_id', 'bundle_product_id')
+                    ->withPivot('discount_percentage', 'position')
+                    ->orderBy('product_bundles.position');
+    }
+    
+    /**
+     * Get product reviews
+     */
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+    
+    /**
+     * Get approved reviews only
+     */
+    public function approvedReviews()
+    {
+        return $this->hasMany(ProductReview::class)->where('status', 'approved');
     }
 
     /**

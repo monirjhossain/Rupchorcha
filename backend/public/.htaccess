@@ -67,3 +67,20 @@
   AddOutputFilterByType DEFLATE text/javascript
   AddOutputFilterByType DEFLATE text/plain
 </IfModule>
+
+# Increase execution time for bulk imports
+<IfModule mod_php7.c>
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 512M
+    php_value post_max_size 50M
+    php_value upload_max_filesize 50M
+</IfModule>
+
+<IfModule mod_php8.c>
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 512M
+    php_value post_max_size 50M
+    php_value upload_max_filesize 50M
+</IfModule>

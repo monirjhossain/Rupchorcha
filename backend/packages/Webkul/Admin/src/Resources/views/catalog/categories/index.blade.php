@@ -17,6 +17,13 @@ $locale = core()->getRequestedLocaleCode();
 
             <div class="page-action">
                 <a
+                    href="{{ route('admin.categories.import.index') }}"
+                    class="btn btn-lg btn-info"
+                    style="margin-right: 10px;"
+                >
+                    📥 Bulk Import
+                </a>
+                <a
                     href="{{ route('admin.catalog.categories.create') }}"
                     class="btn btn-lg btn-primary"
                 >

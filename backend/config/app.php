@@ -255,7 +255,7 @@ return [
          */
         Webkul\Theme\Providers\ThemeServiceProvider::class,
         Webkul\User\Providers\UserServiceProvider::class,
-        // Webkul\Admin\Providers\AdminServiceProvider::class, // Disabled - using custom admin
+        // Webkul\Admin\Providers\AdminServiceProvider::class, // Temporarily disabled - menu config issue
         Webkul\Ui\Providers\UiServiceProvider::class,
         Webkul\Category\Providers\CategoryServiceProvider::class,
         Webkul\Attribute\Providers\AttributeServiceProvider::class,

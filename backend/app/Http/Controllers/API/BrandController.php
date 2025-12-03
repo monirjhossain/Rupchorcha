@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use Illuminate\Http\Request;
 
 class BrandController extends Controller
@@ -13,28 +14,17 @@ class BrandController extends Controller
     public function index()
     {
         try {
-            // Bagisto doesn't have built-in brands table
-            // We'll use attribute options for brands
-            $brandAttribute = \Webkul\Attribute\Models\Attribute::where('code', 'brand')->first();
-            
-            if (!$brandAttribute) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Brand attribute not found',
-                    'data' => []
-                ]);
-            }
-            
-            $brands = \Webkul\Attribute\Models\AttributeOption::where('attribute_id', $brandAttribute->id)
-                ->with('translations')
+            $brands = Brand::where('status', 1)
+                ->orderBy('position', 'asc')
                 ->get()
                 ->map(function ($brand) {
-                    $translation = $brand->translations->first();
                     return [
                         'id' => $brand->id,
-                        'name' => $translation ? $translation->label : 'Unknown',
-                        'admin_name' => $brand->admin_name,
-                        'swatch_value' => $brand->swatch_value,
+                        'name' => $brand->name,
+                        'slug' => $brand->slug,
+                        'description' => $brand->description,
+                        'logo' => $brand->logo_url,
+                        'website' => $brand->website,
                     ];
                 });
             
@@ -58,17 +48,17 @@ class BrandController extends Controller
     public function show($id)
     {
         try {
-            $brand = \Webkul\Attribute\Models\AttributeOption::with('translations')
-                ->findOrFail($id);
-            
-            $translation = $brand->translations->first();
+            $brand = Brand::where('status', 1)->findOrFail($id);
             
             return response()->json([
                 'success' => true,
                 'data' => [
                     'id' => $brand->id,
-                    'name' => $translation ? $translation->label : 'Unknown',
-                    'admin_name' => $brand->admin_name,
+                    'name' => $brand->name,
+                    'slug' => $brand->slug,
+                    'description' => $brand->description,
+                    'logo' => $brand->logo_url,
+                    'website' => $brand->website,
                 ]
             ]);
             
@@ -86,26 +76,37 @@ class BrandController extends Controller
     public function products($id, Request $request)
     {
         try {
-            $perPage = $request->get('per_page', 12);
-            $page = $request->get('page', 1);
+            $brand = Brand::where('status', 1)->findOrFail($id);
             
-            // Get products with this brand attribute value
-            $products = \Webkul\Product\Models\Product::whereHas('attribute_values', function ($query) use ($id) {
-                $query->where('integer_value', $id)
-                      ->orWhere('text_value', $id);
-            })
-            ->with('images', 'inventories')
-            ->paginate($perPage);
+            $perPage = $request->get('per_page', 12);
+            
+            $products = $brand->products()
+                ->where('status', 1)
+                ->with(['images', 'categories'])
+                ->paginate($perPage);
+            
+            // Transform products data
+            $products->getCollection()->transform(function($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'sku' => $product->sku,
+                    'price' => (float) $product->price,
+                    'special_price' => $product->special_price ? (float) $product->special_price : null,
+                    'images' => $product->images->map(function($image) {
+                        return [
+                            'id' => $image->id,
+                            'url' => asset('storage/' . $image->path),
+                            'path' => $image->path,
+                        ];
+                    }),
+                ];
+            });
             
             return response()->json([
                 'success' => true,
-                'data' => $products->items(),
-                'pagination' => [
-                    'total' => $products->total(),
-                    'per_page' => $products->perPage(),
-                    'current_page' => $products->currentPage(),
-                    'last_page' => $products->lastPage(),
-                ]
+                'data' => $products
             ]);
             
         } catch (\Exception $e) {
