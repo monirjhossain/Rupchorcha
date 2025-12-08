@@ -49,22 +49,22 @@
             <div class="nav-items">  
                 @foreach ($menu->items as $menuItem)
                     <div class="nav-item {{ $menu->getActive($menuItem) }}">
-                        <a class="nav-tab-name" href="{{ $menuItem['key'] == 'dashboard' ? $menuItem['url'] : '#' }}">
-                            <span class="icon-menu icon {{ $menuItem['icon-class'] }}"
+                        <a class="nav-tab-name" href="{{ (isset($menuItem['key']) && $menuItem['key'] === 'dashboard') ? ($menuItem['url'] ?? '#') : '#' }}">
+                            <span class="icon-menu icon {{ $menuItem['icon-class'] ?? '' }}"
                             style="margin-right:10px; display: inline-block;vertical-align: middle;transform: scale(0.8);"></span>
 
-                            <span class="menu-label">{{ trans($menuItem['name']) }}</span>
-                            @if(count($menuItem['children']) || $menuItem['key'] == 'configuration' )
+                            <span class="menu-label">{{ trans($menuItem['name'] ?? '') }}</span>
+                            @if((isset($menuItem['children']) && count($menuItem['children'])) || (isset($menuItem['key']) && $menuItem['key'] === 'configuration'))
                             <span class="icon arrow-icon"></span>
                             @endif
                         </a>
-                        @if ($menuItem['key'] != 'configuration')
-                            @if (count($menuItem['children']))
+                        @if (($menuItem['key'] ?? '') != 'configuration')
+                            @if (isset($menuItem['children']) && count($menuItem['children']))
                             <ul>
                                 @foreach ($menuItem['children'] as $subMenuItem)
                                     <li class="navbar-child {{ $menu->getActive($subMenuItem) }}">
-                                    <a href="{{ count($subMenuItem['children']) ? current($subMenuItem['children'])['url'] : $subMenuItem['url'] }}">
-                                            <span style="margin-left:47px">{{ trans($subMenuItem['name']) }}</span>
+                                    <a href="{{ (isset($subMenuItem['children']) && count($subMenuItem['children'])) ? (current($subMenuItem['children'])['url'] ?? $subMenuItem['url'] ?? '#') : ($subMenuItem['url'] ?? '#') }}">
+                                            <span style="margin-left:47px">{{ trans($subMenuItem['name'] ?? '') }}</span>
                                         </a>
                                     </li>
                                 @endforeach
@@ -73,8 +73,8 @@
                         @else
                             <ul>
                                 @foreach ($config->items as $key => $item)
-                                    <li class="navbar-child {{ $item['key'] == request()->route('slug') ? 'active' : '' }}">
-                                        <a href="{{ route('admin.configuration.index', $item['key']) }}">
+                                    <li class="navbar-child {{ ($item['key'] ?? '') == request()->route('slug') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.configuration.index', $item['key'] ?? '') }}">
                                             <span style="margin-left:47px">{{ isset($item['name']) ? trans($item['name']) : '' }}</span>
                                         </a>
                                     </li>

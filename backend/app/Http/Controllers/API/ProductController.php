@@ -97,42 +97,9 @@ class ProductController extends Controller
             $products = $query->paginate($perPage);
             
             // Transform data for API
-            $products->getCollection()->transform(function($product) {
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'slug' => $product->slug,
-                    'sku' => $product->sku,
-                    'description' => $product->description,
-                    'short_description' => $product->short_description,
-                    'price' => (float) $product->price,
-                    'special_price' => $product->special_price ? (float) $product->special_price : null,
-                    'display_price' => (float) $product->display_price,
-                    'quantity' => $product->quantity,
-                    'weight' => $product->weight ? (float) $product->weight : null,
-                    'status' => (bool) $product->status,
-                    'featured' => (bool) $product->featured,
-                    'new' => (bool) $product->new,
-                    'in_stock' => $product->isInStock(),
-                    'images' => $product->images->map(function($image) {
-                        return [
-                            'id' => $image->id,
-                            'url' => asset('storage/' . $image->path),
-                            'path' => $image->path,
-                            'position' => $image->position,
-                        ];
-                    }),
-                    'categories' => $product->categories->map(function($category) {
-                        return [
-                            'id' => $category->id,
-                            'name' => $category->name,
-                            'slug' => $category->slug,
-                        ];
-                    }),
-                    'meta_title' => $product->meta_title,
-                    'meta_description' => $product->meta_description,
-                ];
-            });
+            foreach ($products as $product) {
+                $product->setAppends(['display_price']);
+            }
             
             return response()->json([
                 'success' => true,
@@ -173,27 +140,9 @@ class ProductController extends Controller
             $products = $query->paginate($perPage);
             
             // Transform data
-            $products->getCollection()->transform(function($product) {
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'slug' => $product->slug,
-                    'sku' => $product->sku,
-                    'price' => (float) $product->price,
-                    'special_price' => $product->special_price ? (float) $product->special_price : null,
-                    'display_price' => (float) $product->display_price,
-                    'quantity' => $product->quantity,
-                    'in_stock' => $product->isInStock(),
-                    'images' => $product->images->map(function($image) {
-                        return [
-                            'id' => $image->id,
-                            'url' => asset('storage/' . $image->path),
-                            'path' => $image->path,
-                        ];
-                    }),
-                    'categories' => $product->categories->pluck('name'),
-                ];
-            });
+            foreach ($products as $product) {
+                $product->setAppends(['display_price']);
+            }
             
             return response()->json([
                 'success' => true,
@@ -262,6 +211,67 @@ class ProductController extends Controller
                 ],
             ]);
             
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found',
+                'error' => $e->getMessage(),
+            ], 404);
+        }
+    }
+
+    /**
+     * Get single product by slug
+     * @param string $slug
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function showBySlug($slug)
+    {
+        try {
+            $product = Product::with(['categories', 'images'])
+                ->where('status', 1)
+                ->where('slug', $slug)
+                ->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'sku' => $product->sku,
+                    'description' => $product->description,
+                    'short_description' => $product->short_description,
+                    'price' => (float) $product->price,
+                    'special_price' => $product->special_price ? (float) $product->special_price : null,
+                    'display_price' => (float) $product->display_price,
+                    'quantity' => $product->quantity,
+                    'weight' => $product->weight ? (float) $product->weight : null,
+                    'status' => (bool) $product->status,
+                    'featured' => (bool) $product->featured,
+                    'new' => (bool) $product->new,
+                    'in_stock' => $product->isInStock(),
+                    'images' => $product->images->map(function($image) {
+                        return [
+                            'id' => $image->id,
+                            'url' => asset('storage/' . $image->path),
+                            'path' => $image->path,
+                            'position' => $image->position,
+                        ];
+                    }),
+                    'categories' => $product->categories->map(function($category) {
+                        return [
+                            'id' => $category->id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'description' => $category->description,
+                        ];
+                    }),
+                    'meta_title' => $product->meta_title,
+                    'meta_description' => $product->meta_description,
+                    'meta_keywords' => $product->meta_keywords,
+                ],
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

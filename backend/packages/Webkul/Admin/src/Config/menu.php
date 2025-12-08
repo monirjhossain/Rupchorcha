@@ -1,3 +1,11 @@
+    [
+        'key'        => 'settings.logs',
+        'name'       => 'System Logs',
+        'route'      => 'admin.settings.logs',
+        'sort'       => 10,
+        'icon-class' => '',
+        'parent'     => 'settings',
+    ],
 <?php
 
 return [

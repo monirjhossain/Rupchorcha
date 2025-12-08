@@ -24,7 +24,7 @@ class SliderController extends Controller
             if ($request->has('locale') && $request->locale) {
                 $query->where('locale', $request->locale);
             } else {
-                $query->where('locale', 'en'); // Default to English
+                $query->where('locale', config('app.locale', 'en')); // Default to app locale
             }
             
             $sliders = $query->get();

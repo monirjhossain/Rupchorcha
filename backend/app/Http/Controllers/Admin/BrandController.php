@@ -7,6 +7,7 @@ use App\Models\Brand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 
 class BrandController extends Controller
@@ -44,7 +45,6 @@ class BrandController extends Controller
             'description' => 'nullable|string',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'website' => 'nullable|url|max:255',
-            'status' => 'required|boolean',
             'position' => 'nullable|integer',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
@@ -55,6 +55,9 @@ class BrandController extends Controller
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
+
+        // Set default status to active
+        $validated['status'] = $validated['status'] ?? true;
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
@@ -70,7 +73,10 @@ class BrandController extends Controller
 
     public function edit($id)
     {
-        $brand = Brand::findOrFail($id);
+        $brand = Cache::remember("brand_{$id}", 60, function () use ($id) {
+            return Brand::findOrFail($id);
+        });
+
         return view('admin.brands.edit', compact('brand'));
     }
 
@@ -108,6 +114,9 @@ class BrandController extends Controller
         }
 
         $brand->update($validated);
+
+        // Update the cache
+        Cache::put("brand_{$id}", $brand, 60);
 
         return redirect()->route('admin.brands.index')
             ->with('success', 'Brand updated successfully!');

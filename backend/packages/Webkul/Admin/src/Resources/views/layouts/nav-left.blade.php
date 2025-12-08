@@ -32,7 +32,23 @@
                         
                 @endif
             </a>
-            @if ($menuItem['key'] != 'configuration')
+            @if ($menuItem['key'] == 'settings')
+                <ul class="sub-menubar">
+                    @foreach ($menuItem['children'] as $subMenuItem)
+                        <li class="sub-menu-item {{ $menu->getActive($subMenuItem) }}">
+                            <a href="{{ count($subMenuItem['children']) ? current($subMenuItem['children'])['url'] : $subMenuItem['url'] }}">
+                                <span class="menu-label">{{ trans($subMenuItem['name']) }}</span>
+                            </a>
+                        </li>
+                    @endforeach
+                    {{-- Fallback: Always show System Logs link --}}
+                    <li class="sub-menu-item {{ request()->routeIs('admin.settings.logs') ? 'active' : '' }}">
+                        <a href="{{ route('admin.settings.logs') }}">
+                            <span class="menu-label">System Logs</span>
+                        </a>
+                    </li>
+                </ul>
+            @elseif ($menuItem['key'] != 'configuration')
                 @if (count($menuItem['children']))
                     <ul class="sub-menubar">
                         @foreach ($menuItem['children'] as $subMenuItem)

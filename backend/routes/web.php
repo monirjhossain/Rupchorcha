@@ -183,6 +183,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/general', [AdminSettingsController::class, 'general'])->name('general');
         Route::post('/update', [AdminSettingsController::class, 'update'])->name('update');
+        // System Log View/Download
+        Route::get('/logs', [\App\Http\Controllers\Admin\LogController::class, 'index'])->name('logs');
+        Route::get('/logs/download', [\App\Http\Controllers\Admin\LogController::class, 'download'])->name('logs.download');
     });
 
     // Shipping Settings

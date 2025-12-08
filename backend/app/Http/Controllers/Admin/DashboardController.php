@@ -19,24 +19,43 @@ class DashboardController extends Controller
     public function index()
     {
         try {
-            // Get statistics
+            // Use Bagisto repositories for accurate statistics
+            $orderRepository = app(\Webkul\Sales\Repositories\OrderRepository::class);
+            $customerRepository = app(\Webkul\Customer\Repositories\CustomerRepository::class);
+            $productRepository = app(\Webkul\Product\Repositories\ProductRepository::class);
+
             $statistics = [
-                'total_orders' => Order::count(),
-                'total_customers' => DB::table('customers')->count(),
-                'total_products' => DB::table('products')->count(),
-                'pending_orders' => Order::where('status', 'pending')->count(),
+                'total_orders' => $orderRepository->count(),
+                'total_customers' => $customerRepository->count(),
+                'total_products' => $productRepository->count(),
+                'pending_orders' => $orderRepository->findWhere(['status' => 'pending'])->count(),
             ];
 
-            // Get recent orders
-            $recentOrders = Order::with('items')->orderBy('created_at', 'desc')->limit(10)->get();
+            // Get recent orders (use Eloquent directly)
+            $recentOrders = \Webkul\Sales\Models\Order::with('items')->orderBy('created_at', 'desc')->limit(10)->get();
 
-            // Get top selling products from order items
-            $topProducts = DB::table('customer_order_items')
-                ->select('product_name', 'product_image', DB::raw('SUM(quantity) as total_sold'), DB::raw('SUM(price * quantity) as total_revenue'))
-                ->groupBy('product_id', 'product_name', 'product_image')
-                ->orderBy('total_sold', 'desc')
+            // Get top selling products and their images
+            $topProductsRaw = DB::table('order_items')
+                ->join('products', 'order_items.product_id', '=', 'products.id')
+                ->select('products.id as product_id', 'products.name as product_name', DB::raw('SUM(order_items.quantity) as total_sold'), DB::raw('SUM(order_items.price * order_items.quantity) as total_revenue'))
+                ->groupBy('products.id', 'products.name')
+                ->orderByDesc('total_sold')
                 ->limit(5)
                 ->get();
+
+            // Attach product image if available
+            $topProducts = collect();
+            foreach ($topProductsRaw as $product) {
+                $image = DB::table('product_images')->where('product_id', $product->product_id)->orderBy('position')->value('path');
+                if ($image) {
+                    // Ensure image path is accessible via public/storage
+                    $imageUrl = (strpos($image, 'storage/') === 0) ? asset($image) : asset('storage/' . ltrim($image, '/'));
+                } else {
+                    $imageUrl = asset('images/placeholder.png');
+                }
+                $product->product_image = $imageUrl;
+                $topProducts->push($product);
+            }
 
             // Get revenue data (last 7 days)
             $revenueData = $this->getRevenueData();
@@ -58,7 +77,6 @@ class DashboardController extends Controller
             $recentOrders = collect();
             $topProducts = collect();
             $revenueData = [];
-            
             for ($i = 6; $i >= 0; $i--) {
                 $revenueData[] = [
                     'date' => now()->subDays($i)->format('M d'),
@@ -66,13 +84,12 @@ class DashboardController extends Controller
                     'orders' => 0,
                 ];
             }
-
             return view('admin.dashboard.index', compact(
                 'statistics',
                 'recentOrders',
                 'topProducts',
                 'revenueData'
-            ))->withErrors(['error' => 'Database error: ' . $e->getMessage()]);
+            ));
         }
     }
 

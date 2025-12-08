@@ -27,6 +27,7 @@ Route::get('/sliders', 'App\Http\Controllers\API\SliderController@index');
 Route::prefix('products')->group(function () {
     Route::get('/search', 'App\Http\Controllers\API\ProductController@search');
     Route::get('/', 'App\Http\Controllers\API\ProductController@index');
+    Route::get('/slug/{slug}', 'App\Http\Controllers\API\ProductController@showBySlug');
     Route::get('/{id}', 'App\Http\Controllers\API\ProductController@show');
 });
 
@@ -95,4 +96,25 @@ Route::prefix('orders')->group(function () {
     Route::get('/', 'App\Http\Controllers\API\OrderController@index');
     Route::post('/', 'App\Http\Controllers\API\OrderController@store');
     Route::get('/{id}', 'App\Http\Controllers\API\OrderController@show');
+});
+
+// Debug route: List products with missing or duplicate slugs
+Route::get('/debug/products/bad-slugs', function() {
+    $badProducts = \DB::table('products')
+        ->select('id', 'name', 'slug')
+        ->whereNull('slug')
+        ->orWhere('slug', '')
+        ->orWhereIn('slug', function($query) {
+            $query->select('slug')
+                ->from('products')
+                ->groupBy('slug')
+                ->havingRaw('COUNT(*) > 1');
+        })
+        ->get();
+    return response()->json($badProducts);
+});
+
+// Health check route for backend
+Route::get('/ping', function() {
+    return 'pong';
 });
